@@ -465,6 +465,7 @@ dependencies = [
  "egui",
  "egui-wgpu",
  "egui-winit",
+ "ls-screenshot",
  "nu-ansi-term",
  "pixels",
  "time",

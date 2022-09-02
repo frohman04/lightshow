@@ -2,8 +2,9 @@
 #![forbid(unsafe_code)]
 
 use crate::gui::Framework;
+use ls_screenshot::{Screenshot, Screenshotter};
 use pixels::{Error, Pixels, SurfaceTexture};
-use tracing::{error, Level};
+use tracing::{error, info_span, Level};
 use tracing_subscriber::FmtSubscriber;
 use winit::dpi::LogicalSize;
 use winit::event::{Event, VirtualKeyCode};
@@ -13,16 +14,16 @@ use winit_input_helper::WinitInputHelper;
 
 mod gui;
 
-const WIDTH: u32 = 640;
-const HEIGHT: u32 = 480;
-const BOX_SIZE: i16 = 64;
+const IMAGE_WIDTH: u32 = 960;
+const IMAGE_HEIGHT: u32 = 540;
+const BUFFER: u32 = 50;
+const WINDOW_WIDTH: u32 = IMAGE_WIDTH + BUFFER * 2;
+const WINDOW_HEIGHT: u32 = IMAGE_HEIGHT + BUFFER * 2;
 
 /// Representation of the application state. In this example, a box will bounce around the screen.
 struct World {
-    box_x: i16,
-    box_y: i16,
-    velocity_x: i16,
-    velocity_y: i16,
+    screenshotter: Screenshotter,
+    screenshot: Option<Screenshot>,
 }
 
 fn main() -> Result<(), Error> {
@@ -37,7 +38,7 @@ fn main() -> Result<(), Error> {
     let event_loop = EventLoop::new();
     let mut input = WinitInputHelper::new();
     let window = {
-        let size = LogicalSize::new(WIDTH as f64, HEIGHT as f64);
+        let size = LogicalSize::new(WINDOW_WIDTH as f64, WINDOW_HEIGHT as f64);
         WindowBuilder::new()
             .with_title("Hello Pixels + egui")
             .with_inner_size(size)
@@ -50,7 +51,7 @@ fn main() -> Result<(), Error> {
         let window_size = window.inner_size();
         let scale_factor = window.scale_factor() as f32;
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-        let pixels = Pixels::new(WIDTH, HEIGHT, surface_texture)?;
+        let pixels = Pixels::new(WINDOW_WIDTH, WINDOW_HEIGHT, surface_texture)?;
         let framework = Framework::new(
             &event_loop,
             window_size.width,
@@ -139,46 +140,61 @@ impl World {
     /// Create a new `World` instance that can draw a moving box.
     fn new() -> Self {
         Self {
-            box_x: 24,
-            box_y: 16,
-            velocity_x: 1,
-            velocity_y: 1,
+            screenshotter: Screenshotter::new().expect("Unable to create screenshotter"),
+            screenshot: None,
         }
     }
 
     /// Update the `World` internal state; bounce the box around the screen.
     fn update(&mut self) {
-        if self.box_x <= 0 || self.box_x + BOX_SIZE > WIDTH as i16 {
-            self.velocity_x *= -1;
-        }
-        if self.box_y <= 0 || self.box_y + BOX_SIZE > HEIGHT as i16 {
-            self.velocity_y *= -1;
-        }
+        let span = info_span!("Updating screenshot");
+        let _guard = span.enter();
 
-        self.box_x += self.velocity_x;
-        self.box_y += self.velocity_y;
+        match self.screenshotter.capture() {
+            Ok(screenshot) => self.screenshot = Some(screenshot),
+            Err(e) => {
+                error!("Failed while capturing screenshot: {:?}", e)
+            }
+        }
     }
 
     /// Draw the `World` state to the frame buffer.
     ///
     /// Assumes the default texture format: `wgpu::TextureFormat::Rgba8UnormSrgb`
     fn draw(&self, frame: &mut [u8]) {
-        for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
-            let x = (i % WIDTH as usize) as i16;
-            let y = (i / WIDTH as usize) as i16;
+        match &self.screenshot {
+            Some(ss) => {
+                let scale_x = ss.width as f32 / IMAGE_WIDTH as f32;
+                let scale_y = ss.height as f32 / IMAGE_HEIGHT as f32;
+                let buffer = BUFFER as f32;
+                let img_start_x = BUFFER as f32;
+                let img_end_x = (BUFFER + IMAGE_WIDTH) as f32;
+                let img_start_y = BUFFER as f32;
+                let img_end_y = (BUFFER + IMAGE_HEIGHT) as f32;
 
-            let inside_the_box = x >= self.box_x
-                && x < self.box_x + BOX_SIZE
-                && y >= self.box_y
-                && y < self.box_y + BOX_SIZE;
+                for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
+                    let canvas_x = (i % WINDOW_WIDTH as usize) as f32;
+                    let canvas_y = (i / WINDOW_WIDTH as usize) as f32;
 
-            let rgba = if inside_the_box {
-                [0x5e, 0x48, 0xe8, 0xff]
-            } else {
-                [0x48, 0xb2, 0xe8, 0xff]
-            };
+                    let rgba = if canvas_x < img_start_x
+                        || canvas_y < img_start_y
+                        || canvas_x >= img_end_x
+                        || canvas_y >= img_end_y
+                    {
+                        [0, 0, 0, 0]
+                    } else {
+                        let ss_x = ((canvas_x - buffer) * scale_x) as usize;
+                        let ss_y = ((canvas_y - buffer) * scale_y) as usize;
+                        let ss_i = ss_y * ss.width + ss_x;
+                        let ss_pixel = ss.pixels[ss_i];
 
-            pixel.copy_from_slice(&rgba);
+                        [ss_pixel.r, ss_pixel.g, ss_pixel.b, ss_pixel.a]
+                    };
+
+                    pixel.copy_from_slice(&rgba);
+                }
+            }
+            None => {}
         }
     }
 }

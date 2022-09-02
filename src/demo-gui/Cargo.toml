@@ -8,7 +8,7 @@ resolver = "2"
 egui = "~0.19.0"
 egui-wgpu = "~0.19.0"
 egui-winit = "~0.19.0"
-#ls-screenshot = { path = "../screenshot" }
+ls-screenshot = { path = "../screenshot" }
 nu-ansi-term = "~0.46.0"
 # need newer than 0.9.0 to work around use of broken wgpu = 0.12
 pixels = { git = "https://github.com/parasyte/pixels.git", rev = "881033c5c7f2944c05b93a0197310b7e6c430aae" }
