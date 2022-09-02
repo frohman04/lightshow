@@ -7,4 +7,5 @@ resolver = "2"
 [dependencies]
 
 anyhow = "~1.0.63"
-dxgcap = "~0.2.4"
+# need custom fork of abandoned project to fix requirement of old winapi = 0.3.8
+dxgcap = { git = "https://github.com/frohman04/dxgcap-rs.git", rev = "236d82ca8a3134dc290469640ad97e87eb320976" }

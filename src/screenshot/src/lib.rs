@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use dxgcap::{DXGIManager, BGRA8};
 
 pub struct Screenshot {

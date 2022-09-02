@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use ls_screenshot::Screenshotter;
 use std::ffi::OsStr;
 use std::fs;

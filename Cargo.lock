@@ -26,8 +26,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "dxgcap"
 version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18a3f3df51c509e7c8d2807c63abfecdea1a83def81baec83d68c6f5bb8ac654"
+source = "git+https://github.com/frohman04/dxgcap-rs.git?rev=236d82ca8a3134dc290469640ad97e87eb320976#236d82ca8a3134dc290469640ad97e87eb320976"
 dependencies = [
  "winapi",
  "wio",

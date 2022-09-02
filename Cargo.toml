@@ -1,7 +1,7 @@
 [workspace]
 members = [
-	"src/screenshot",
 	"src/lightshow",
+	"src/screenshot",
 ]
 
 resolver = "2"
