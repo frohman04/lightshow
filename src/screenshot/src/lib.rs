@@ -1,14 +1,37 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+use dxgcap::{DXGIManager, BGRA8};
+
+pub struct Screenshot {
+    pub pixels: Vec<BGRA8>,
+    pub width: usize,
+    pub height: usize,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+impl Screenshot {
+    fn new(pixels: Vec<BGRA8>, width: usize, height: usize) -> Screenshot {
+        Screenshot {
+            pixels,
+            width,
+            height,
+        }
+    }
+}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+pub struct Screenshotter {
+    manager: DXGIManager,
+}
+
+impl Screenshotter {
+    pub fn new() -> anyhow::Result<Screenshotter> {
+        Ok(Screenshotter {
+            manager: DXGIManager::new(50).map_err(anyhow::Error::msg)?,
+        })
+    }
+
+    pub fn capture(&mut self) -> anyhow::Result<Screenshot> {
+        let ss = self
+            .manager
+            .capture_frame()
+            .map_err(|err| anyhow::Error::msg(format!("{:?}", err)))?;
+        Ok(Screenshot::new(ss.0, ss.1 .0, ss.1 .1))
     }
 }
