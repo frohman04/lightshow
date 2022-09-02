@@ -1,5 +1,6 @@
 [workspace]
 members = [
+	"src/demo-gui",
 	"src/lightshow",
 	"src/screenshot",
 ]
