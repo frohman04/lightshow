@@ -4,7 +4,10 @@
 use crate::gui::Framework;
 use ls_screenshot::{Screenshot, Screenshotter};
 use pixels::{Error, Pixels, SurfaceTexture};
-use tracing::{error, info_span, Level};
+use std::cell::RefCell;
+use std::rc::Rc;
+use time::OffsetDateTime;
+use tracing::{error, info, info_span, Level};
 use tracing_subscriber::FmtSubscriber;
 use winit::dpi::LogicalSize;
 use winit::event::{Event, VirtualKeyCode};
@@ -40,13 +43,14 @@ fn main() -> Result<(), Error> {
     let window = {
         let size = LogicalSize::new(WINDOW_WIDTH as f64, WINDOW_HEIGHT as f64);
         WindowBuilder::new()
-            .with_title("Hello Pixels + egui")
+            .with_title("Lightshow Sampler Demo")
             .with_inner_size(size)
             .with_min_inner_size(size)
             .build(&event_loop)
             .unwrap()
     };
 
+    let world = Rc::new(RefCell::new(World::new()));
     let (mut pixels, mut framework) = {
         let window_size = window.inner_size();
         let scale_factor = window.scale_factor() as f32;
@@ -58,11 +62,11 @@ fn main() -> Result<(), Error> {
             window_size.height,
             scale_factor,
             &pixels,
+            world.clone(),
         );
 
         (pixels, framework)
     };
-    let mut world = World::new();
 
     event_loop.run(move |event, _, control_flow| {
         // Handle input events
@@ -85,7 +89,7 @@ fn main() -> Result<(), Error> {
             }
 
             // Update internal state and request a redraw
-            world.update();
+            world.borrow_mut().update();
             window.request_redraw();
         }
 
@@ -97,7 +101,7 @@ fn main() -> Result<(), Error> {
             // Draw the current frame
             Event::RedrawRequested(_) => {
                 // Draw the world
-                world.draw(pixels.get_frame_mut());
+                world.borrow_mut().draw(pixels.get_frame_mut());
 
                 // Prepare egui
                 framework.prepare(&window);
@@ -115,7 +119,7 @@ fn main() -> Result<(), Error> {
 
                 // Basic error handling
                 if render_result
-                    .map_err(|e| error!("pixels.render() failed: {}", e))
+                    .map_err(|e| error!("pixels.render() failed: {:?}", e))
                     .is_err()
                 {
                     *control_flow = ControlFlow::Exit;
@@ -136,6 +140,25 @@ fn fix_ansi_term() -> bool {
     true
 }
 
+impl gui::Capturer for World {
+    fn capture(&mut self) -> f64 {
+        let span = info_span!("Updating screenshot");
+        let _guard = span.enter();
+
+        let start = OffsetDateTime::now_utc();
+        match self.screenshotter.capture() {
+            Ok(screenshot) => self.screenshot = Some(screenshot),
+            Err(e) => {
+                error!("Failed while capturing screenshot: {:?}", e)
+            }
+        };
+        let end = OffsetDateTime::now_utc();
+        let duration = (end - start).as_seconds_f64();
+        info!(duration);
+        duration
+    }
+}
+
 impl World {
     /// Create a new `World` instance that can draw a moving box.
     fn new() -> Self {
@@ -147,15 +170,6 @@ impl World {
 
     /// Update the `World` internal state; bounce the box around the screen.
     fn update(&mut self) {
-        let span = info_span!("Updating screenshot");
-        let _guard = span.enter();
-
-        match self.screenshotter.capture() {
-            Ok(screenshot) => self.screenshot = Some(screenshot),
-            Err(e) => {
-                error!("Failed while capturing screenshot: {:?}", e)
-            }
-        }
     }
 
     /// Draw the `World` state to the frame buffer.

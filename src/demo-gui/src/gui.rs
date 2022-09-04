@@ -1,8 +1,16 @@
 use egui::{ClippedPrimitive, Context, TexturesDelta};
 use egui_wgpu::renderer::{RenderPass, ScreenDescriptor};
 use pixels::{wgpu, PixelsContext};
+use std::cell::RefCell;
+use std::rc::Rc;
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::Window;
+
+pub(crate) trait Capturer {
+    /// Capture a screenshot of the current screen, returning the time taken to capture the
+    /// screenshot
+    fn capture(&mut self) -> f64;
+}
 
 /// Manages all state required for rendering egui over `Pixels`.
 pub(crate) struct Framework {
@@ -20,8 +28,8 @@ pub(crate) struct Framework {
 
 /// Example application state. A real application will need a lot more state than this.
 struct Gui {
-    // /// Only show the egui window when true.
-    // window_open: bool,
+    capturer: Rc<RefCell<dyn Capturer>>,
+    last_screenshot_duation: Option<f64>,
 }
 
 impl Framework {
@@ -32,6 +40,7 @@ impl Framework {
         height: u32,
         scale_factor: f32,
         pixels: &pixels::Pixels,
+        capturer: Rc<RefCell<dyn Capturer>>,
     ) -> Self {
         let max_texture_size = pixels.device().limits().max_texture_dimension_2d as usize;
 
@@ -45,7 +54,7 @@ impl Framework {
         };
         let rpass = RenderPass::new(pixels.device(), pixels.render_texture_format(), 1);
         let textures = TexturesDelta::default();
-        let gui = Gui::new();
+        let gui = Gui::new(capturer);
 
         Self {
             egui_ctx,
@@ -128,36 +137,29 @@ impl Framework {
 
 impl Gui {
     /// Create a `Gui`.
-    fn new() -> Self {
-        Self { /* window_open: true */ }
+    fn new(capturer: Rc<RefCell<dyn Capturer>>) -> Self {
+        Self {
+            capturer,
+            last_screenshot_duation: None,
+        }
     }
 
     /// Create the UI using egui.
-    fn ui(&mut self, _ctx: &Context) {
-        // egui::TopBottomPanel::top("menubar_container").show(ctx, |ui| {
-        //     egui::menu::bar(ui, |ui| {
-        //         ui.menu_button("File", |ui| {
-        //             if ui.button("About...").clicked() {
-        //                 self.window_open = true;
-        //                 ui.close_menu();
-        //             }
-        //         })
-        //     });
-        // });
-
-        // egui::Window::new("Hello, egui!")
-        //     .open(&mut self.window_open)
-        //     .show(ctx, |ui| {
-        //         ui.label("This example demonstrates using egui with pixels.");
-        //         ui.label("Made with 💖 in San Francisco!");
-        //
-        //         ui.separator();
-        //
-        //         ui.horizontal(|ui| {
-        //             ui.spacing_mut().item_spacing.x /= 2.0;
-        //             ui.label("Learn more about egui at");
-        //             ui.hyperlink("https://docs.rs/egui");
-        //         });
-        //     });
+    fn ui(&mut self, ctx: &Context) {
+        egui::TopBottomPanel::bottom("controls").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                if ui.button("Capture Screenshot").clicked() {
+                    let duration = self.capturer.borrow_mut().capture();
+                    self.last_screenshot_duation = Some(duration);
+                }
+                match self.last_screenshot_duation {
+                    Some(duration) => {
+                        ui.label(format!("Duration: {}s", duration));
+                        ui.label(format!("FPS: {}", 1f64 / duration))
+                    }
+                    None => ui.label(""),
+                }
+            });
+        });
     }
 }
