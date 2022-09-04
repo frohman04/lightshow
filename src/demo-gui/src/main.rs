@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 use crate::gui::Framework;
+use ls_sample::{DummySampler, Sample, Sampler};
 use ls_screenshot::{Screenshot, Screenshotter};
 use pixels::{Error, Pixels, SurfaceTexture};
 use std::cell::RefCell;
@@ -26,7 +27,9 @@ const WINDOW_HEIGHT: u32 = IMAGE_HEIGHT + BUFFER * 2;
 /// Representation of the application state. In this example, a box will bounce around the screen.
 struct World {
     screenshotter: Screenshotter,
+    sampler: Box<dyn Sampler>,
     screenshot: Option<Screenshot>,
+    sample: Option<Sample>,
 }
 
 fn main() -> Result<(), Error> {
@@ -147,11 +150,16 @@ impl gui::Capturer for World {
 
         let start = OffsetDateTime::now_utc();
         match self.screenshotter.capture() {
-            Ok(screenshot) => self.screenshot = Some(screenshot),
+            Ok(screenshot) => {
+                self.screenshot = Some(screenshot);
+
+                self.sample = Some(self.sampler.sample(self.screenshot.as_ref().unwrap()));
+            }
             Err(e) => {
                 error!("Failed while capturing screenshot: {:?}", e)
             }
         };
+
         let end = OffsetDateTime::now_utc();
         let duration = (end - start).as_seconds_f64();
         info!(duration);
@@ -164,13 +172,14 @@ impl World {
     fn new() -> Self {
         Self {
             screenshotter: Screenshotter::new().expect("Unable to create screenshotter"),
+            sampler: Box::new(DummySampler::new(37, 22)),
             screenshot: None,
+            sample: None,
         }
     }
 
     /// Update the `World` internal state; bounce the box around the screen.
-    fn update(&mut self) {
-    }
+    fn update(&mut self) {}
 
     /// Draw the `World` state to the frame buffer.
     ///

@@ -2,6 +2,7 @@
 members = [
 	"src/demo-gui",
 	"src/lightshow",
+	"src/sample",
 	"src/screenshot",
 ]
 

@@ -8,6 +8,7 @@ resolver = "2"
 egui = "~0.19.0"
 egui-wgpu = "~0.19.0"
 egui-winit = "~0.19.0"
+ls-sample = { path = "../sample" }
 ls-screenshot = { path = "../screenshot" }
 nu-ansi-term = "~0.46.0"
 # need newer than 0.9.0 to work around use of broken wgpu = 0.12
