@@ -188,14 +188,15 @@ impl World {
         if let (Some(ss), Some(samp)) = (&self.screenshot, &self.sample) {
             let scale_x = ss.width as f32 / IMAGE_WIDTH as f32;
             let scale_y = ss.height as f32 / IMAGE_HEIGHT as f32;
+
             let buffer = BUFFER as f32;
             let img_start_x = BUFFER as f32;
             let img_end_x = (BUFFER + IMAGE_WIDTH) as f32;
             let img_start_y = BUFFER as f32;
             let img_end_y = (BUFFER + IMAGE_HEIGHT) as f32;
 
-            let pixel_width = (WINDOW_WIDTH as f32 / samp.width as f32).floor() as i32;
-            let pixel_height = (WINDOW_HEIGHT as f32 / samp.height as f32).floor() as i32;
+            let pixel_width = (IMAGE_WIDTH as f32 / samp.width as f32).ceil() as i32;
+            let pixel_height = (IMAGE_HEIGHT as f32 / samp.height as f32).ceil() as i32;
 
             for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
                 let canvas_x = (i % WINDOW_WIDTH as usize) as f32;
@@ -219,43 +220,49 @@ impl World {
                     }
                     // edge lights: top edge, going right
                     (false, true, false, false) => {
-                        let px = samp.pixels[(canvas_x / pixel_width as f32).floor() as usize];
+                        let px = samp.pixels
+                            [((canvas_x - buffer) / pixel_width as f32).floor() as usize];
                         [px.r, px.g, px.b, px.a]
                     }
                     // edge lights: top right corner
                     (false, true, true, false) => {
-                        let px = samp.pixels[samp.width];
+                        let px = samp.pixels[samp.width - 1];
                         [px.r, px.g, px.b, px.a]
                     }
                     // edge lights: right edge, going down
                     (false, false, true, false) => {
-                        let px = samp.pixels
-                            [samp.width + (canvas_y / pixel_height as f32).floor() as usize];
+                        let px = samp.pixels[samp.width - 1
+                            + ((canvas_y - buffer) / pixel_height as f32).floor() as usize];
                         [px.r, px.g, px.b, px.a]
                     }
                     // edge lights: bottom right corner
                     (false, false, true, true) => {
-                        let px = samp.pixels[samp.width + samp.height];
+                        let px = samp.pixels[samp.width - 1 + samp.height - 1];
                         [px.r, px.g, px.b, px.a]
                     }
                     // edge lights: bottom edge, going left
                     (false, false, false, true) => {
-                        let px = samp.pixels[samp.width
-                            + samp.height
-                            + (samp.width - (canvas_x / pixel_width as f32) as usize)];
+                        let px = samp.pixels[samp.width - 1 + samp.height - 1
+                            + (samp.width - ((canvas_x - buffer) / pixel_width as f32) as usize)
+                            - 1];
                         [px.r, px.g, px.b, px.a]
                     }
                     // edge lights: bottom left corner
                     (true, false, false, true) => {
-                        let px = samp.pixels[samp.width + samp.height + samp.width];
+                        let px = samp.pixels[samp.width - 1 + samp.height - 1 + samp.width - 1];
                         [px.r, px.g, px.b, px.a]
                     }
                     // edge lights: left edge, going up
                     (true, false, false, false) => {
-                        let px = samp.pixels[samp.width
-                            + samp.height
-                            + samp.width
-                            + (samp.height - (canvas_y / pixel_height as f32) as usize)];
+                        let px = samp
+                            .pixels
+                            .get(
+                                samp.width - 1 + samp.height - 1 + samp.width - 1
+                                    + (samp.height
+                                        - ((canvas_y - buffer) / pixel_height as f32) as usize)
+                                    - 1,
+                            )
+                            .unwrap_or(&samp.pixels[0]);
                         [px.r, px.g, px.b, px.a]
                     }
                     (false, false, false, false) => {
