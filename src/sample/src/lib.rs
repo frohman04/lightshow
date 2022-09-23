@@ -39,13 +39,26 @@ impl DummySampler {
 impl Sampler for DummySampler {
     fn sample(&self, _screenshot: &Screenshot) -> Sample {
         let length = self.width * 2 + self.height * 2;
-        let inc = u8::MAX / length as u8;
+        let min_color = (u8::MAX as f32 * 0.25).floor() as u8;
+        let inc = (u8::MAX - min_color) / length as u8;
         let mut pixels = Vec::with_capacity(length);
         for i in 0..length {
             pixels.push(BGRA8 {
-                b: inc * i as u8,
-                g: inc * i as u8,
-                r: inc * i as u8,
+                b: if i % 3 == 0 {
+                    0
+                } else {
+                    inc * i as u8 + min_color
+                },
+                g: if i % 3 == 1 {
+                    0
+                } else {
+                    inc * i as u8 + min_color
+                },
+                r: if i % 3 == 2 {
+                    0
+                } else {
+                    inc * i as u8 + min_color
+                },
                 a: 100,
             });
         }
