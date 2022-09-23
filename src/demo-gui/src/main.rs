@@ -185,39 +185,94 @@ impl World {
     ///
     /// Assumes the default texture format: `wgpu::TextureFormat::Rgba8UnormSrgb`
     fn draw(&self, frame: &mut [u8]) {
-        match &self.screenshot {
-            Some(ss) => {
-                let scale_x = ss.width as f32 / IMAGE_WIDTH as f32;
-                let scale_y = ss.height as f32 / IMAGE_HEIGHT as f32;
-                let buffer = BUFFER as f32;
-                let img_start_x = BUFFER as f32;
-                let img_end_x = (BUFFER + IMAGE_WIDTH) as f32;
-                let img_start_y = BUFFER as f32;
-                let img_end_y = (BUFFER + IMAGE_HEIGHT) as f32;
+        if let (Some(ss), Some(samp)) = (&self.screenshot, &self.sample) {
+            let scale_x = ss.width as f32 / IMAGE_WIDTH as f32;
+            let scale_y = ss.height as f32 / IMAGE_HEIGHT as f32;
+            let buffer = BUFFER as f32;
+            let img_start_x = BUFFER as f32;
+            let img_end_x = (BUFFER + IMAGE_WIDTH) as f32;
+            let img_start_y = BUFFER as f32;
+            let img_end_y = (BUFFER + IMAGE_HEIGHT) as f32;
 
-                for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
-                    let canvas_x = (i % WINDOW_WIDTH as usize) as f32;
-                    let canvas_y = (i / WINDOW_WIDTH as usize) as f32;
+            let pixel_width = (WINDOW_WIDTH as f32 / samp.width as f32).floor() as i32;
+            let pixel_height = (WINDOW_HEIGHT as f32 / samp.height as f32).floor() as i32;
 
-                    let rgba = if canvas_x < img_start_x
-                        || canvas_y < img_start_y
-                        || canvas_x >= img_end_x
-                        || canvas_y >= img_end_y
-                    {
-                        [0, 0, 0, 0]
-                    } else {
+            for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
+                let canvas_x = (i % WINDOW_WIDTH as usize) as f32;
+                let canvas_y = (i / WINDOW_WIDTH as usize) as f32;
+
+                let in_left_buffer = canvas_x < img_start_x;
+                let in_right_buffer = canvas_x >= img_end_x;
+                let in_top_buffer = canvas_y < img_start_y;
+                let in_bottom_buffer = canvas_y >= img_end_y;
+
+                let rgba = match (
+                    in_left_buffer,
+                    in_top_buffer,
+                    in_right_buffer,
+                    in_bottom_buffer,
+                ) {
+                    // edge lights: top left corner
+                    (true, true, false, false) => {
+                        let px = samp.pixels[0];
+                        [px.r, px.g, px.b, px.a]
+                    }
+                    // edge lights: top edge, going right
+                    (false, true, false, false) => {
+                        let px = samp.pixels[(canvas_x / pixel_width as f32).floor() as usize];
+                        [px.r, px.g, px.b, px.a]
+                    }
+                    // edge lights: top right corner
+                    (false, true, true, false) => {
+                        let px = samp.pixels[samp.width];
+                        [px.r, px.g, px.b, px.a]
+                    }
+                    // edge lights: right edge, going down
+                    (false, false, true, false) => {
+                        let px = samp.pixels
+                            [samp.width + (canvas_y / pixel_height as f32).floor() as usize];
+                        [px.r, px.g, px.b, px.a]
+                    }
+                    // edge lights: bottom right corner
+                    (false, false, true, true) => {
+                        let px = samp.pixels[samp.width + samp.height];
+                        [px.r, px.g, px.b, px.a]
+                    }
+                    // edge lights: bottom edge, going left
+                    (false, false, false, true) => {
+                        let px = samp.pixels[samp.width
+                            + samp.height
+                            + (samp.width - (canvas_x / pixel_width as f32) as usize)];
+                        [px.r, px.g, px.b, px.a]
+                    }
+                    // edge lights: bottom left corner
+                    (true, false, false, true) => {
+                        let px = samp.pixels[samp.width + samp.height + samp.width];
+                        [px.r, px.g, px.b, px.a]
+                    }
+                    // edge lights: left edge, going up
+                    (true, false, false, false) => {
+                        let px = samp.pixels[samp.width
+                            + samp.height
+                            + samp.width
+                            + (samp.height - (canvas_y / pixel_height as f32) as usize)];
+                        [px.r, px.g, px.b, px.a]
+                    }
+                    (false, false, false, false) => {
                         let ss_x = ((canvas_x - buffer) * scale_x) as usize;
                         let ss_y = ((canvas_y - buffer) * scale_y) as usize;
                         let ss_i = ss_y * ss.width + ss_x;
                         let ss_pixel = ss.pixels[ss_i];
 
                         [ss_pixel.r, ss_pixel.g, ss_pixel.b, ss_pixel.a]
-                    };
+                    }
+                    a => {
+                        panic!("Impossible state (left, top, right, bottom): {:?}", a)
+                    }
+                };
 
-                    pixel.copy_from_slice(&rgba);
-                }
+                pixel.copy_from_slice(&rgba);
             }
-            None => {}
         }
     }
 }
