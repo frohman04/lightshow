@@ -21,6 +21,7 @@ mod gui;
 const IMAGE_WIDTH: u32 = 960;
 const IMAGE_HEIGHT: u32 = 540;
 const BUFFER: u32 = 50;
+const EDGE: u32 = 20;
 const WINDOW_WIDTH: u32 = IMAGE_WIDTH + BUFFER * 2;
 const WINDOW_HEIGHT: u32 = IMAGE_HEIGHT + BUFFER * 2;
 
@@ -190,10 +191,16 @@ impl World {
             let scale_y = ss.height as f32 / IMAGE_HEIGHT as f32;
 
             let buffer = BUFFER as f32;
-            let img_start_x = BUFFER as f32;
-            let img_end_x = (BUFFER + IMAGE_WIDTH) as f32;
-            let img_start_y = BUFFER as f32;
-            let img_end_y = (BUFFER + IMAGE_HEIGHT) as f32;
+            let img_start_x = buffer;
+            let img_end_x = buffer + IMAGE_WIDTH as f32;
+            let img_start_y = buffer;
+            let img_end_y = buffer + IMAGE_HEIGHT as f32;
+
+            let edge = EDGE as f32;
+            let monitor_start_x = buffer - edge;
+            let monitor_end_x = buffer + IMAGE_WIDTH as f32 + edge;
+            let monitor_start_y = (BUFFER - EDGE) as f32;
+            let monitor_end_y = buffer + IMAGE_HEIGHT as f32 + edge;
 
             let pixel_width = (IMAGE_WIDTH as f32 / samp.width as f32).ceil() as i32;
             let pixel_height = (IMAGE_HEIGHT as f32 / samp.height as f32).ceil() as i32;
@@ -202,58 +209,79 @@ impl World {
                 let canvas_x = (i % WINDOW_WIDTH as usize) as f32;
                 let canvas_y = (i / WINDOW_WIDTH as usize) as f32;
 
-                let in_left_buffer = canvas_x < img_start_x;
-                let in_right_buffer = canvas_x >= img_end_x;
-                let in_top_buffer = canvas_y < img_start_y;
-                let in_bottom_buffer = canvas_y >= img_end_y;
+                let in_left_bg = canvas_x < monitor_start_x;
+                let in_top_bg = canvas_y < monitor_start_y;
+                let in_right_bg = monitor_end_x <= canvas_x;
+                let in_bottom_bg = monitor_end_y <= canvas_y;
+
+                let in_left_bezel = monitor_start_x <= canvas_x && canvas_x < img_start_x;
+                let in_top_bezel = monitor_start_y <= canvas_y && canvas_y < img_start_y;
+                let in_right_bezel = img_end_x <= canvas_x && canvas_x < monitor_end_x;
+                let in_bottom_bezel = img_end_y <= canvas_y && canvas_y < monitor_end_y;
+
+                let in_screen = (img_start_x <= canvas_x && canvas_x < img_end_x)
+                    && (img_start_y <= canvas_y && canvas_y < img_end_y);
 
                 let rgba = match (
-                    in_left_buffer,
-                    in_top_buffer,
-                    in_right_buffer,
-                    in_bottom_buffer,
+                    in_left_bg,
+                    in_top_bg,
+                    in_right_bg,
+                    in_bottom_bg,
+                    in_left_bezel,
+                    in_top_bezel,
+                    in_right_bezel,
+                    in_bottom_bezel,
+                    in_screen,
                 ) {
                     // edge lights: top left corner
-                    (true, true, false, false) => {
+                    (true, true, false, false, false, false, false, false, false)
+                    | (false, true, false, false, true, false, false, false, false)
+                    | (true, false, false, false, false, true, false, false, false) => {
                         let px = samp.pixels[0];
                         [px.r, px.g, px.b, px.a]
                     }
                     // edge lights: top edge, going right
-                    (false, true, false, false) => {
+                    (false, true, false, false, false, false, false, false, false) => {
                         let px = samp.pixels
                             [((canvas_x - buffer) / pixel_width as f32).floor() as usize];
                         [px.r, px.g, px.b, px.a]
                     }
                     // edge lights: top right corner
-                    (false, true, true, false) => {
+                    (false, true, true, false, false, false, false, false, false)
+                    | (false, false, true, false, false, true, false, false, false)
+                    | (false, true, false, false, false, false, true, false, false) => {
                         let px = samp.pixels[samp.width - 1];
                         [px.r, px.g, px.b, px.a]
                     }
                     // edge lights: right edge, going down
-                    (false, false, true, false) => {
+                    (false, false, true, false, false, false, false, false, false) => {
                         let px = samp.pixels[samp.width - 1
                             + ((canvas_y - buffer) / pixel_height as f32).floor() as usize];
                         [px.r, px.g, px.b, px.a]
                     }
                     // edge lights: bottom right corner
-                    (false, false, true, true) => {
+                    (false, false, true, true, false, false, false, false, false)
+                    | (false, false, true, false, false, false, false, true, false)
+                    | (false, false, false, true, false, false, true, false, false) => {
                         let px = samp.pixels[samp.width - 1 + samp.height - 1];
                         [px.r, px.g, px.b, px.a]
                     }
                     // edge lights: bottom edge, going left
-                    (false, false, false, true) => {
+                    (false, false, false, true, false, false, false, false, false) => {
                         let px = samp.pixels[samp.width - 1 + samp.height - 1
                             + (samp.width - ((canvas_x - buffer) / pixel_width as f32) as usize)
                             - 1];
                         [px.r, px.g, px.b, px.a]
                     }
                     // edge lights: bottom left corner
-                    (true, false, false, true) => {
+                    (true, false, false, true, false, false, false, false, false)
+                    | (true, false, false, false, false, false, false, true, false)
+                    | (false, false, false, true, true, false, false, false, false) => {
                         let px = samp.pixels[samp.width - 1 + samp.height - 1 + samp.width - 1];
                         [px.r, px.g, px.b, px.a]
                     }
                     // edge lights: left edge, going up
-                    (true, false, false, false) => {
+                    (true, false, false, false, false, false, false, false, false) => {
                         let px = samp
                             .pixels
                             .get(
@@ -265,7 +293,14 @@ impl World {
                             .unwrap_or(&samp.pixels[0]);
                         [px.r, px.g, px.b, px.a]
                     }
-                    (false, false, false, false) => {
+                    // monitor bezel
+                    (_, _, _, _, true, _, _, _, false)  // left
+                    | (_, _, _, _, _, true, _, _, false) // top
+                    | (_, _, _, _, _, _, true, _, false) // right
+                    | (_, _, _, _, _, _, _, true, false) // bottom
+                    => [0, 0, 0, 0],
+                    // screenshot
+                    (false, false, false, false, false, false, false, false, true) => {
                         let ss_x = ((canvas_x - buffer) * scale_x) as usize;
                         let ss_y = ((canvas_y - buffer) * scale_y) as usize;
                         let ss_i = ss_y * ss.width + ss_x;
@@ -273,8 +308,33 @@ impl World {
 
                         [ss_pixel.r, ss_pixel.g, ss_pixel.b, ss_pixel.a]
                     }
-                    a => {
-                        panic!("Impossible state (left, top, right, bottom): {a:?}")
+                    _ => {
+                        panic!(
+                            "Impossible state
+                            \ti:               {i}
+
+                            \tcanvas_x:        {canvas_x}
+                            \tmonitor_start_x: {monitor_start_x}
+                            \timg_start_x:     {img_start_x}
+                            \timg_end_x:       {img_end_x}
+                            \tmonitor_end_x:   {monitor_end_x}
+
+                            \tcanvas_y:        {canvas_y}
+                            \tmonitor_start_y: {monitor_start_y}
+                            \timg_start_y:     {img_start_y}
+                            \timg_end_y:       {img_end_y}
+                            \tmonitor_end_y:   {monitor_end_y}
+
+                            \tin_left_bg:      {in_left_bg}
+                            \tin_top_bg:       {in_top_bg}
+                            \tin_right_bg:     {in_right_bg}
+                            \tin_bottom_bg:    {in_bottom_bg}
+                            \tin_left_bezel:   {in_left_bezel}
+                            \tin_top_bezel:    {in_top_bezel}
+                            \tin_right_bezel:  {in_right_bezel}
+                            \tin_bottom_bezel: {in_bottom_bezel}
+                            \tin_screen:       {in_screen}"
+                        )
                     }
                 };
 
