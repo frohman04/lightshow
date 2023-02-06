@@ -2,7 +2,8 @@
 #![forbid(unsafe_code)]
 
 use crate::gui::Framework;
-use ls_sample::{DummySampler, Sample, Sampler};
+use ls_sample::core::{Sample, Sampler};
+use ls_sample::dummy::DummySampler;
 use ls_screenshot::{Screenshot, Screenshotter};
 use pixels::{Error, Pixels, SurfaceTexture};
 use std::cell::RefCell;
