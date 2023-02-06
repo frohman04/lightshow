@@ -22,5 +22,5 @@ impl Sample {
 }
 
 pub trait Sampler {
-    fn sample(&self, screenshot: &Screenshot) -> Sample;
+    fn sample(&mut self, screenshot: &Screenshot) -> Sample;
 }

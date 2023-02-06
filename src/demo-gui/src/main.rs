@@ -2,8 +2,8 @@
 #![forbid(unsafe_code)]
 
 use crate::gui::Framework;
+use ls_sample::avg_rec::AvgRectangleSampler;
 use ls_sample::core::{Sample, Sampler};
-use ls_sample::dummy::DummySampler;
 use ls_screenshot::{Screenshot, Screenshotter};
 use pixels::{Error, Pixels, SurfaceTexture};
 use std::cell::RefCell;
@@ -174,7 +174,7 @@ impl World {
     fn new() -> Self {
         Self {
             screenshotter: Screenshotter::new().expect("Unable to create screenshotter"),
-            sampler: Box::new(DummySampler::new(37, 22)),
+            sampler: Box::new(AvgRectangleSampler::new(37, 22, 50)),
             screenshot: None,
             sample: None,
         }
