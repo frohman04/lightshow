@@ -274,7 +274,7 @@ impl World {
                         [ss_pixel.r, ss_pixel.g, ss_pixel.b, ss_pixel.a]
                     }
                     a => {
-                        panic!("Impossible state (left, top, right, bottom): {:?}", a)
+                        panic!("Impossible state (left, top, right, bottom): {a:?}")
                     }
                 };
 

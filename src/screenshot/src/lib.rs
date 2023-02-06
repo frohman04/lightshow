@@ -33,7 +33,7 @@ impl Screenshotter {
         let ss = self
             .manager
             .capture_frame()
-            .map_err(|err| anyhow::Error::msg(format!("{:?}", err)))?;
+            .map_err(|err| anyhow::Error::msg(format!("{err:?}")))?;
         Ok(Screenshot::new(ss.0, ss.1 .0, ss.1 .1))
     }
 }

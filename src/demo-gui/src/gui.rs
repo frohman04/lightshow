@@ -154,7 +154,7 @@ impl Gui {
                 }
                 match self.last_screenshot_duation {
                     Some(duration) => {
-                        ui.label(format!("Duration: {}s", duration));
+                        ui.label(format!("Duration: {duration}s"));
                         ui.label(format!("FPS: {}", 1f64 / duration))
                     }
                     None => ui.label(""),
