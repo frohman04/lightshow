@@ -6,7 +6,7 @@ resolver = "2"
 
 [dependencies]
 ls-screenshot = { path = "../screenshot" }
-nu-ansi-term = "~0.46.0"
+nu-ansi-term = "~0.47.0"
 time = "~0.3.14"
 tracing = "~0.1.36"
 tracing-subscriber = "~0.3.15"

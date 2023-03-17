@@ -77,7 +77,10 @@ fn main() -> Result<(), Error> {
         // Handle input events
         if input.update(&event) {
             // Close events
-            if input.key_pressed(VirtualKeyCode::Escape) || input.quit() {
+            if input.key_pressed(VirtualKeyCode::Escape)
+                || input.close_requested()
+                || input.destroyed()
+            {
                 *control_flow = ControlFlow::Exit;
                 return;
             }
@@ -89,7 +92,14 @@ fn main() -> Result<(), Error> {
 
             // Resize the window
             if let Some(size) = input.window_resized() {
-                pixels.resize_surface(size.width, size.height);
+                pixels
+                    .resize_surface(size.width, size.height)
+                    .unwrap_or_else(|err| {
+                        panic!(
+                            "Unable to resize surface to size {}, {}: {:?}",
+                            size.width, size.height, err
+                        )
+                    });
                 framework.resize(size.width, size.height);
             }
 
@@ -106,7 +116,7 @@ fn main() -> Result<(), Error> {
             // Draw the current frame
             Event::RedrawRequested(_) => {
                 // Draw the world
-                world.borrow_mut().draw(pixels.get_frame_mut());
+                world.borrow_mut().draw(pixels.frame_mut());
 
                 // Prepare egui
                 framework.prepare(&window);

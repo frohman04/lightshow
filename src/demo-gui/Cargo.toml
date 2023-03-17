@@ -5,16 +5,16 @@ edition = "2021"
 resolver = "2"
 
 [dependencies]
-egui = "~0.19.0"
-egui-wgpu = "~0.19.0"
-egui-winit = "~0.19.0"
+egui = "~0.21.0"
+egui-wgpu = "~0.21.0"
+egui-winit = "~0.21.0"
 ls-sample = { path = "../sample" }
 ls-screenshot = { path = "../screenshot" }
-nu-ansi-term = "~0.46.0"
-# need newer than 0.9.0 to work around use of broken wgpu = 0.12
-pixels = { git = "https://github.com/parasyte/pixels.git", rev = "881033c5c7f2944c05b93a0197310b7e6c430aae" }
+nu-ansi-term = "~0.47.0"
+# need version greater than 0.11.0 to get wgpu 0.15
+pixels = { git = "https://github.com/parasyte/pixels.git", rev = "295139a4129ef8c1e0d5dbbfe49019323bfc4ed5" }
 time = "~0.3.14"
 tracing = "~0.1.36"
 tracing-subscriber = "~0.3.15"
-winit = "~0.27.2"
-winit_input_helper = "~0.13.0"
+winit = "~0.28.3"
+winit_input_helper = "~0.14.0"
