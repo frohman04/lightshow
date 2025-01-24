@@ -4,7 +4,11 @@
 #endif
 #define PIN         2
 #define NUMPIXELS 119
-#define MSGSIZE     4
+#define MSGSIZE     3
+#define DEBUG       1
+
+#define LOW         0
+#define HIGH      255
 
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 #define DELAYVAL 50
@@ -17,22 +21,43 @@ void setup() {
   pixels.begin();
 }
 
+byte buffer1[MSGSIZE];
+byte buffer2[MSGSIZE];
+byte* currBuffer = buffer1;
+byte* prevBuffer = buffer2;
+byte* tempBuffer;
+int i = 0;
+
 void loop() {
   if (Serial.available() >= MSGSIZE) {
-    byte message[MSGSIZE];
-    int bytesReadLen = Serial.readBytes(message, MSGSIZE);
+    int bytesReadLen = Serial.readBytes(currBuffer, MSGSIZE);
     if (bytesReadLen == MSGSIZE) {
-      Serial.print("Setting pixel ");
-      Serial.print(message[0]);
-      Serial.print(" to RGB [");
-      Serial.print(message[1]);
-      Serial.print(", ");
-      Serial.print(message[2]);
-      Serial.print(", ");
-      Serial.print(message[3]);
-      Serial.print("]\n");
-      pixels.setPixelColor(message[0], pixels.Color(message[1], message[2], message[3]));
-      pixels.show();
+      if (prevBuffer[0] == LOW && prevBuffer[1] == HIGH && prevBuffer[2] == LOW
+          && currBuffer[0] == HIGH && currBuffer[1] == LOW && currBuffer[2] == HIGH) {
+        if (DEBUG) {
+          Serial.println("Found sentinel");
+        }
+        i = 0;
+      } else {
+        if (DEBUG) {
+          Serial.print("Setting pixel ");
+          Serial.print(i);
+          Serial.print(" to RGB [");
+          Serial.print(currBuffer[0]);
+          Serial.print(", ");
+          Serial.print(currBuffer[1]);
+          Serial.print(", ");
+          Serial.print(currBuffer[2]);
+          Serial.print("]\n");
+        }
+        pixels.setPixelColor(i++, pixels.Color(currBuffer[0], currBuffer[1], currBuffer[2]));
+        pixels.show();
+      }
+
+      // swap buffers
+      tempBuffer = currBuffer;
+      currBuffer = prevBuffer;
+      prevBuffer = tempBuffer;
     }
   }
 }
