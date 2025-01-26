@@ -39,7 +39,6 @@ void loop() {
 }
 
 const size_t pixelDataStartI = 2;
-const size_t bytesPerPixel = 3;
 
 void onPacketReceived(const uint8_t* buffer, size_t size) {
 #ifdef DEBUG
@@ -72,7 +71,7 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
       uint8_t numPixels = buffer[1];
 
       for (int pixelI = 0; pixelI < numPixels; pixelI++) {
-        size_t baseAddr = pixelDataStartI + bytesPerPixel * pixelDataStartI;
+        size_t baseAddr = pixelDataStartI + MSGSIZE * pixelDataStartI;
 
 #ifdef DEBUG
         Serial.print("Setting pixel ");
