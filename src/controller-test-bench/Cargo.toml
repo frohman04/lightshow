@@ -1,0 +1,13 @@
+[package]
+name = "controller-test-bench"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+
+[dependencies]
+cobs2 = "~0.1.4"
+crc = "~3.2.1"
+nu-ansi-term = "~0.47.0"
+serialport = "~4.7.0"
+tracing = "~0.1.36"
+tracing-subscriber = "~0.3.15"

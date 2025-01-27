@@ -25,6 +25,10 @@ void setup() {
   myPacketSerial.begin(115200);
   myPacketSerial.setPacketHandler(&onPacketReceived);
   pixels.begin();
+  Serial.println("Startup complete");
+#ifdef DEBUG
+  Serial.println("Debug mode activated");
+#endif
 }
 
 void loop() {
@@ -39,6 +43,13 @@ void loop() {
 }
 
 const size_t pixelDataStartI = 2;
+const CRC16 crc = CRC16(
+    CRC16_ARC_POLYNOME,
+    CRC16_ARC_INITIAL,
+    CRC16_ARC_XOR_OUT,
+    CRC16_ARC_REV_IN,
+    CRC16_ARC_REV_OUT
+);
 
 void onPacketReceived(const uint8_t* buffer, size_t size) {
 #ifdef DEBUG
@@ -51,7 +62,8 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
     Serial.println("Received packet with too small size, discarding");
 #endif
   } else {
-    CRC16 crc;
+    crc.restart();
+
     for (int i = 0; i < size - 2; i++) {
       crc.add(buffer[i]);
     }
