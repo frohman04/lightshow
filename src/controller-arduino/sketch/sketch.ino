@@ -53,13 +53,19 @@ const CRC16 crc = CRC16(
 
 void onPacketReceived(const uint8_t* buffer, size_t size) {
 #ifdef DEBUG
-  Serial.println("Received packet");
+  Serial.print("Received packet (size ");
+  Serial.print(size);
+  Serial.print("): ");
+  for (int i = 0; i < size; i++) {
+    Serial.print(String(buffer[i], HEX));
+  }
+  Serial.print("\n");
 #endif
 
   if (size < 4) {
     // illegal packet size, ignore
 #ifdef DEBUG
-    Serial.println("Received packet with too small size, discarding");
+    Serial.println("ERROR: Received packet with too small size, discarding");
 #endif
   } else {
     crc.restart();
@@ -68,11 +74,11 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
       crc.add(buffer[i]);
     }
     uint16_t expectedCrc = crc.calc();
-    uint16_t actualCrc = ((uint16_t)buffer[size-1] << 8) | buffer[size-2];
+    uint16_t actualCrc = ((uint16_t)buffer[size-2] << 8) | buffer[size-1];
     if (actualCrc != expectedCrc) {
       // CRC mismatch, discard packet
 #ifdef DEBUG
-      Serial.print("Received packet mismatched CRC, discarding (expected");
+      Serial.print("ERROR: Received packet mismatched CRC, discarding (expected ");
       Serial.print(String(expectedCrc, HEX));
       Serial.print(", got ");
       Serial.print(String(actualCrc, HEX));
@@ -83,10 +89,10 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
       uint8_t numPixels = buffer[1];
 
       for (int pixelI = 0; pixelI < numPixels; pixelI++) {
-        size_t baseAddr = pixelDataStartI + MSGSIZE * pixelDataStartI;
+        size_t baseAddr = pixelDataStartI + MSGSIZE * pixelI;
 
 #ifdef DEBUG
-        Serial.print("Setting pixel ");
+        Serial.print("DEBUG: Setting pixel ");
         Serial.print(pixelI + pixelOffset);
         Serial.print(" to RGB [");
         Serial.print(String(buffer[baseAddr + 0], HEX));

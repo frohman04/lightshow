@@ -1,8 +1,8 @@
 use std::io;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, Read, Write};
 use std::num::ParseIntError;
 use std::time::Duration;
-use tracing::{error, info, Level};
+use tracing::{error, info, warn, Level};
 use tracing_subscriber::FmtSubscriber;
 
 fn main() {
@@ -34,12 +34,15 @@ fn cmd_loop(port: &str, baud_rate: u32) {
         .open()
         .unwrap_or_else(|_| panic!("Failed to open serial port {}", port));
 
-    let mut num_pixels = 0;
+    let mut offset: u8 = 0;
+    let mut num_pixels: u8 = 0;
     let mut buffer: Vec<u8> = Vec::new();
-    while let Ok(pixel) = input("Enter RGB for pixes as HTML hex ('send', 'read', 'exit'): ") {
+    while let Ok(pixel) =
+        input("Enter RGB for pixes as HTML hex ('offset [n]', 'send', 'read', 'exit'): ")
+    {
         match pixel.as_str() {
             "send" => {
-                let packet = build_packet(num_pixels, &buffer);
+                let packet = build_packet(offset, num_pixels, &buffer);
                 num_pixels = 0;
                 buffer.clear();
 
@@ -48,17 +51,29 @@ fn cmd_loop(port: &str, baud_rate: u32) {
                     .write_all(packet.as_slice())
                     .expect("Failed to send packet");
             }
-            "read" => {
-                let mut reader = BufReader::new(&mut arduino);
-                let mut line = String::new();
-                match reader.read_line(&mut line) {
-                    Ok(_) => info!("recv> {}", line),
-                    Err(e) => error!("Error while reading data: {}", e),
-                };
-            }
+            "read" => match arduino.bytes_to_read() {
+                Ok(bytes_available) if bytes_available > 0 => {
+                    let mut input_buffer = vec![0u8; bytes_available as usize];
+                    match arduino.read_exact(&mut input_buffer) {
+                        Ok(_) => {
+                            input_buffer
+                                .split(|char| *char == b'\n')
+                                .filter(|line| !line.is_empty())
+                                .for_each(|line| info!("recv> {}", String::from_utf8_lossy(line)));
+                        }
+                        Err(e) => error!("Error while reading data: {}", e),
+                    }
+                }
+                Ok(_) => warn!("recv empty"),
+                Err(e) => error!("Error while reading data: {}", e),
+            },
             "exit" => {
                 break;
             }
+            x if x.starts_with("offset") => match x.replace("offset", "").trim().parse::<u8>() {
+                Ok(of) => offset = of,
+                Err(e) => error!("Unable to parse offset: {}", e),
+            },
             x if x.len() != 6 => {
                 error!("Must enter value six characters long (got {})", x.len());
             }
@@ -92,11 +107,12 @@ fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
 }
 
 /// Build a COBS-encoded packet for a chunk of data.
-fn build_packet(num_pixels: u8, buffer: &[u8]) -> Vec<u8> {
+fn build_packet(offset: u8, num_pixels: u8, buffer: &[u8]) -> Vec<u8> {
     info!("Building message for Arduino");
 
     let message = {
         let mut mess: Vec<u8> = Vec::new();
+        mess.push(offset);
         mess.push(num_pixels);
         mess.extend_from_slice(buffer);
         mess
