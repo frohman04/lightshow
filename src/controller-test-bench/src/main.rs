@@ -1,5 +1,5 @@
 use std::io;
-use std::io::{BufRead, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::num::ParseIntError;
 use std::time::Duration;
 use tracing::{error, info, Level};
@@ -36,7 +36,7 @@ fn cmd_loop(port: &str, baud_rate: u32) {
 
     let mut num_pixels = 0;
     let mut buffer: Vec<u8> = Vec::new();
-    while let Ok(pixel) = input("Enter RGB for pixes as HTML hex ('send', 'exit'): ") {
+    while let Ok(pixel) = input("Enter RGB for pixes as HTML hex ('send', 'read', 'exit'): ") {
         match pixel.as_str() {
             "send" => {
                 let packet = build_packet(num_pixels, &buffer);
@@ -47,6 +47,14 @@ fn cmd_loop(port: &str, baud_rate: u32) {
                 arduino
                     .write_all(packet.as_slice())
                     .expect("Failed to send packet");
+            }
+            "read" => {
+                let mut reader = BufReader::new(&mut arduino);
+                let mut line = String::new();
+                match reader.read_line(&mut line) {
+                    Ok(_) => info!("recv> {}", line),
+                    Err(e) => error!("Error while reading data: {}", e),
+                };
             }
             "exit" => {
                 break;
