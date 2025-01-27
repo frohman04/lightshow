@@ -42,7 +42,7 @@ void loop() {
   myPacketSerial.update();
 }
 
-const size_t pixelDataStartI = 2;
+const size_t pixelDataStartI = 3;
 const CRC16 crc = CRC16(
     CRC16_ARC_POLYNOME,
     CRC16_ARC_INITIAL,
@@ -85,8 +85,18 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
       Serial.print(")\n");
 #endif
     } else {
-      uint8_t pixelOffset = buffer[0];
-      uint8_t numPixels = buffer[1];
+      uint8_t instruction = buffer[0];
+      uint8_t pixelOffset = buffer[1];
+      uint8_t numPixels = buffer[2];
+
+      if (instruction != 1) {
+        // unknown instruction, discard packet
+#ifdef DEBUG
+      Serial.print("ERROR: Received packet with unknown instruction, discarding (go ");
+      Serial.print(String(instruction, HEX));
+      Serial.print(")\n");
+#endif
+      }
 
       for (int pixelI = 0; pixelI < numPixels; pixelI++) {
         size_t baseAddr = pixelDataStartI + MSGSIZE * pixelI;

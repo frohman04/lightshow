@@ -42,7 +42,7 @@ fn cmd_loop(port: &str, baud_rate: u32) {
     {
         match pixel.as_str() {
             "send" => {
-                let packet = build_packet(offset, num_pixels, &buffer);
+                let packet = build_packet(1, offset, num_pixels, &buffer);
                 num_pixels = 0;
                 buffer.clear();
 
@@ -107,11 +107,12 @@ fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
 }
 
 /// Build a COBS-encoded packet for a chunk of data.
-fn build_packet(offset: u8, num_pixels: u8, buffer: &[u8]) -> Vec<u8> {
+fn build_packet(instruction: u8, offset: u8, num_pixels: u8, buffer: &[u8]) -> Vec<u8> {
     info!("Building message for Arduino");
 
     let message = {
         let mut mess: Vec<u8> = Vec::new();
+        mess.push(instruction);
         mess.push(offset);
         mess.push(num_pixels);
         mess.extend_from_slice(buffer);
