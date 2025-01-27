@@ -1,5 +1,6 @@
 [workspace]
 members = [
+	"src/controller-protocol",
 	"src/controller-test-bench",
 	"src/demo-gui",
 	"src/lightshow",

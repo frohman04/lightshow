@@ -1,3 +1,4 @@
+use ls_controller_protocol::{build_packet, SetLeds};
 use std::io;
 use std::io::{BufRead, Read, Write};
 use std::num::ParseIntError;
@@ -42,7 +43,7 @@ fn cmd_loop(port: &str, baud_rate: u32) {
     {
         match pixel.as_str() {
             "send" => {
-                let packet = build_packet(1, offset, num_pixels, &buffer);
+                let packet = build_packet(SetLeds::new(offset, num_pixels, &buffer));
                 num_pixels = 0;
                 buffer.clear();
 
@@ -104,44 +105,4 @@ fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
         .step_by(2)
         .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
         .collect()
-}
-
-/// Build a COBS-encoded packet for a chunk of data.
-fn build_packet(instruction: u8, offset: u8, num_pixels: u8, buffer: &[u8]) -> Vec<u8> {
-    info!("Building message for Arduino");
-
-    let message = {
-        let mut mess: Vec<u8> = Vec::new();
-        mess.push(instruction);
-        mess.push(offset);
-        mess.push(num_pixels);
-        mess.extend_from_slice(buffer);
-        mess
-    };
-    info!("Constructed message: {:02x?}", message);
-
-    let checksum = {
-        let calc = crc::Crc::<u16>::new(&crc::CRC_16_ARC);
-        let mut digest = calc.digest();
-        digest.update(message.as_slice());
-        digest.finalize()
-    };
-    info!("Computed CRC16:      {} / {:x}", checksum, checksum);
-
-    let packet = {
-        let mut p: Vec<u8> = Vec::new();
-        p.extend_from_slice(message.as_slice());
-        p.extend_from_slice(&checksum.to_be_bytes());
-        p
-    };
-    info!("Constructed packet:  {:02x?}", packet);
-
-    let encoded_packet = {
-        let mut p = cobs2::cobs::encode_vector(packet.as_slice()).unwrap();
-        p.push(0);
-        p
-    };
-    info!("Encoded packet:      {:02x?}", encoded_packet);
-
-    encoded_packet
 }

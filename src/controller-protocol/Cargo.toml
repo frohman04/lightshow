@@ -1,0 +1,10 @@
+[package]
+name = "ls-controller-protocol"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+
+[dependencies]
+cobs2 = "~0.1.4"
+crc = "~3.2.1"
+tracing = "~0.1.36"
