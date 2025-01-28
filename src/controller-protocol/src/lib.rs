@@ -1,37 +1,11 @@
 #![forbid(unsafe_code)]
 
+mod instruction;
+mod set_leds;
+
+use crate::instruction::Instruction;
+pub use crate::set_leds::SetLeds;
 use tracing::info;
-
-pub trait Instruction {
-    fn to_message(self) -> Vec<u8>;
-}
-
-pub struct SetLeds<'a> {
-    offset: u8,
-    num_pixels: u8,
-    pixel_colors: &'a [u8],
-}
-
-impl<'a> SetLeds<'a> {
-    pub fn new(offset: u8, num_pixels: u8, pixel_colors: &'a [u8]) -> Self {
-        Self {
-            offset,
-            num_pixels,
-            pixel_colors,
-        }
-    }
-}
-
-impl Instruction for SetLeds<'_> {
-    fn to_message(self) -> Vec<u8> {
-        let mut mess: Vec<u8> = Vec::new();
-        mess.push(1u8);
-        mess.push(self.offset);
-        mess.push(self.num_pixels);
-        mess.extend_from_slice(self.pixel_colors);
-        mess
-    }
-}
 
 /// Build a COBS-encoded packet for a chunk of data.
 pub fn build_packet<T: Instruction>(instruction: T) -> Vec<u8> {
