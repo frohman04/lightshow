@@ -10,8 +10,7 @@
 #define MSGSIZE     3
 #define DEBUG
 
-#define LOW       " "
-#define HIGH      "~"
+#define INST_SET_LEDS 1
 
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 #define DELAYVAL 50
@@ -51,6 +50,40 @@ const CRC16 crc = CRC16(
     CRC16_ARC_REV_OUT
 );
 
+bool isCrcValid(const uint8_t* buffer, size_t size) {
+  if (size < 3) {
+    // illegal packet size, ignore
+#ifdef DEBUG
+    Serial.println("ERROR: Received packet with too small size, discarding");
+#endif
+
+    return false;
+  }
+
+  crc.restart();
+
+  for (int i = 0; i < size - 2; i++) {
+    crc.add(buffer[i]);
+  }
+  uint16_t expectedCrc = crc.calc();
+  uint16_t actualCrc = ((uint16_t)buffer[size-2] << 8) | buffer[size-1];
+
+  if (actualCrc == expectedCrc) {
+    return true;
+  } else {
+    // CRC mismatch, discard packet
+#ifdef DEBUG
+    Serial.print("ERROR: Received packet mismatched CRC, discarding (expected ");
+    Serial.print(String(expectedCrc, HEX));
+    Serial.print(", got ");
+    Serial.print(String(actualCrc, HEX));
+    Serial.print(")\n");
+#endif
+
+    return false;
+  } 
+}
+
 void onPacketReceived(const uint8_t* buffer, size_t size) {
 #ifdef DEBUG
   Serial.print("Received packet (size ");
@@ -62,41 +95,12 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
   Serial.print("\n");
 #endif
 
-  if (size < 4) {
-    // illegal packet size, ignore
-#ifdef DEBUG
-    Serial.println("ERROR: Received packet with too small size, discarding");
-#endif
-  } else {
-    crc.restart();
+  if (isCrcValid(buffer, size)) {
+    uint8_t instruction = buffer[0];
 
-    for (int i = 0; i < size - 2; i++) {
-      crc.add(buffer[i]);
-    }
-    uint16_t expectedCrc = crc.calc();
-    uint16_t actualCrc = ((uint16_t)buffer[size-2] << 8) | buffer[size-1];
-    if (actualCrc != expectedCrc) {
-      // CRC mismatch, discard packet
-#ifdef DEBUG
-      Serial.print("ERROR: Received packet mismatched CRC, discarding (expected ");
-      Serial.print(String(expectedCrc, HEX));
-      Serial.print(", got ");
-      Serial.print(String(actualCrc, HEX));
-      Serial.print(")\n");
-#endif
-    } else {
-      uint8_t instruction = buffer[0];
+    if (instruction == INST_SET_LEDS) {
       uint8_t pixelOffset = buffer[1];
       uint8_t numPixels = buffer[2];
-
-      if (instruction != 1) {
-        // unknown instruction, discard packet
-#ifdef DEBUG
-      Serial.print("ERROR: Received packet with unknown instruction, discarding (go ");
-      Serial.print(String(instruction, HEX));
-      Serial.print(")\n");
-#endif
-      }
 
       for (int pixelI = 0; pixelI < numPixels; pixelI++) {
         size_t baseAddr = pixelDataStartI + MSGSIZE * pixelI;
@@ -123,6 +127,13 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
         );
       }
       pixels.show();
+    } else {
+      // unknown instruction, discard packet
+#ifdef DEBUG
+    Serial.print("ERROR: Received packet with unknown instruction, discarding (go ");
+    Serial.print(String(instruction, HEX));
+    Serial.print(")\n");
+#endif
     }
   }
 }
