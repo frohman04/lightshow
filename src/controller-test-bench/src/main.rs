@@ -40,8 +40,8 @@ fn cmd_loop(port: &str, baud_rate: u32) {
         .open()
         .unwrap_or_else(|_| panic!("Failed to open serial port {}", port));
 
-    let commands: HashMap<String, Box<dyn InstructionBuilder<_>>> = {
-        let mut map: HashMap<String, Box<dyn InstructionBuilder<_>>> = HashMap::new();
+    let commands: HashMap<String, Box<dyn InstructionBuilder<_, _>>> = {
+        let mut map: HashMap<String, Box<dyn InstructionBuilder<_, _>>> = HashMap::new();
         map.insert(
             SetLedsBuilder::display_name(),
             Box::new(SetLedsBuilder::new()),
@@ -69,28 +69,43 @@ fn cmd_loop(port: &str, baud_rate: u32) {
                 Ok(_) => warn!("recv empty"),
                 Err(e) => error!("Error while reading data: {}", e),
             },
-            _ => match commands.get(&cmd) {
-                Some(cmd_processor) => match cmd_processor.build_instruction() {
-                    Some(instruction) => {
-                        let packet = build_packet(instruction);
+            _ => {
+                let parts = cmd
+                    .split_whitespace()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>();
+                let cmd = parts[0].clone();
+                let args = parts[1..].to_vec();
 
-                        info!("Sending packet: {:02x?}", packet);
-                        arduino
-                            .write_all(packet.as_slice())
-                            .expect("Failed to send packet");
+                match commands.get(&cmd) {
+                    Some(cmd_processor) => {
+                        let parsed_args = match cmd_processor.parse_args(args) {
+                            Some(a) => a,
+                            None => continue,
+                        };
+                        match cmd_processor.build_instruction(parsed_args) {
+                            Some(instruction) => {
+                                let packet = build_packet(instruction);
+
+                                info!("Sending packet: {:02x?}", packet);
+                                arduino
+                                    .write_all(packet.as_slice())
+                                    .expect("Failed to send packet");
+                            }
+                            None => continue,
+                        }
                     }
-                    None => continue,
-                },
-                None => {
-                    println!("Unknown command: {}", cmd);
-                    print_help(&commands);
+                    None => {
+                        println!("Unknown command: {}", cmd);
+                        print_help(&commands);
+                    }
                 }
-            },
+            }
         }
     }
 }
 
-fn print_help<T: Instruction>(commands: &HashMap<String, Box<dyn InstructionBuilder<T>>>) {
+fn print_help<T: Instruction, A>(commands: &HashMap<String, Box<dyn InstructionBuilder<T, A>>>) {
     commands
         .iter()
         .for_each(|(command, builder)| println!("{} - {}", command, builder.help()));

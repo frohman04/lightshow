@@ -1,7 +1,11 @@
 use crate::instruction_builder::{InstructionBuilder, InstructionBuilderMeta};
-use crate::util::{decode_hex, input, input_u8};
+use crate::util::{decode_hex, input};
 use ls_controller_protocol::SetLeds;
 use tracing::{error, info};
+
+pub struct SetLedsBuilderArgs {
+    offset: u8,
+}
 
 pub struct SetLedsBuilder {}
 
@@ -17,15 +21,31 @@ impl InstructionBuilderMeta for SetLedsBuilder {
     }
 }
 
-impl InstructionBuilder<SetLeds> for SetLedsBuilder {
+impl InstructionBuilder<SetLeds, SetLedsBuilderArgs> for SetLedsBuilder {
     fn help(&self) -> String {
-        "set the colors for a set of LEDs".to_string()
+        "[offset] - set the colors for a set of LEDs".to_string()
     }
 
-    fn build_instruction(&self) -> Option<SetLeds> {
-        let display_name = Self::display_name();
+    fn parse_args(&self, args: Vec<String>) -> Option<SetLedsBuilderArgs> {
+        if args.is_empty() {
+            error!(
+                "Must specify offset as argument to {}",
+                Self::display_name()
+            );
+            return None;
+        }
+        let offset = match args[0].clone().parse::<u8>() {
+            Ok(offset) => offset,
+            Err(e) => {
+                error!("Unable to parse offset: {}", e);
+                return None;
+            }
+        };
+        Some(SetLedsBuilderArgs { offset })
+    }
 
-        let offset = input_u8(format!("{}: offset (exit)> ", display_name).as_str())?;
+    fn build_instruction(&self, args: SetLedsBuilderArgs) -> Option<SetLeds> {
+        let display_name = Self::display_name();
 
         let mut num_pixels: u8 = 0;
         let mut buffer: Vec<u8> = Vec::new();
@@ -33,7 +53,7 @@ impl InstructionBuilder<SetLeds> for SetLedsBuilder {
             format!(
                 "{}: led{} (done, exit, help)> ",
                 display_name,
-                offset + num_pixels
+                args.offset + num_pixels
             )
             .as_str(),
         ) {
@@ -50,7 +70,7 @@ impl InstructionBuilder<SetLeds> for SetLedsBuilder {
                 "peek" => {
                     info!(
                         "(offset: {}, num_pixels: {}): {:02x?}",
-                        offset, num_pixels, buffer
+                        args.offset, num_pixels, buffer
                     );
                 }
                 v => match decode_hex(v) {
@@ -67,6 +87,6 @@ impl InstructionBuilder<SetLeds> for SetLedsBuilder {
             }
         }
 
-        Some(SetLeds::new(offset, num_pixels, buffer))
+        Some(SetLeds::new(args.offset, num_pixels, buffer))
     }
 }
