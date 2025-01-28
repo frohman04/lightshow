@@ -1,7 +1,12 @@
+mod inst_builders;
+mod instruction_builder;
 mod util;
 
-use crate::util::{decode_hex, input};
-use ls_controller_protocol::{build_packet, SetLeds};
+use crate::inst_builders::set_leds::SetLedsBuilder;
+use crate::instruction_builder::{InstructionBuilder, InstructionBuilderMeta};
+use crate::util::input;
+use ls_controller_protocol::{build_packet, Instruction};
+use std::collections::HashMap;
 use std::time::Duration;
 use tracing::{error, info, warn, Level};
 use tracing_subscriber::FmtSubscriber;
@@ -35,23 +40,19 @@ fn cmd_loop(port: &str, baud_rate: u32) {
         .open()
         .unwrap_or_else(|_| panic!("Failed to open serial port {}", port));
 
-    let mut offset: u8 = 0;
-    let mut num_pixels: u8 = 0;
-    let mut buffer: Vec<u8> = Vec::new();
-    while let Ok(pixel) =
-        input("Enter RGB for pixes as HTML hex ('offset [n]', 'send', 'read', 'exit'): ")
-    {
-        match pixel.as_str() {
-            "send" => {
-                let packet = build_packet(SetLeds::new(offset, num_pixels, &buffer));
-                num_pixels = 0;
-                buffer.clear();
+    let commands: HashMap<String, Box<dyn InstructionBuilder<_>>> = {
+        let mut map: HashMap<String, Box<dyn InstructionBuilder<_>>> = HashMap::new();
+        map.insert(
+            SetLedsBuilder::display_name(),
+            Box::new(SetLedsBuilder::new()),
+        );
+        map
+    };
 
-                info!("Sending packet: {:02x?}", packet);
-                arduino
-                    .write_all(packet.as_slice())
-                    .expect("Failed to send packet");
-            }
+    while let Ok(cmd) = input("(exit, help)> ") {
+        match cmd.as_str() {
+            "exit" => break,
+            "help" => print_help(&commands),
             "read" => match arduino.bytes_to_read() {
                 Ok(bytes_available) if bytes_available > 0 => {
                     let mut input_buffer = vec![0u8; bytes_available as usize];
@@ -68,21 +69,32 @@ fn cmd_loop(port: &str, baud_rate: u32) {
                 Ok(_) => warn!("recv empty"),
                 Err(e) => error!("Error while reading data: {}", e),
             },
-            "exit" => {
-                break;
-            }
-            x if x.starts_with("offset") => match x.replace("offset", "").trim().parse::<u8>() {
-                Ok(of) => offset = of,
-                Err(e) => error!("Unable to parse offset: {}", e),
+            _ => match commands.get(&cmd) {
+                Some(cmd_processor) => match cmd_processor.build_instruction() {
+                    Some(instruction) => {
+                        let packet = build_packet(instruction);
+
+                        info!("Sending packet: {:02x?}", packet);
+                        arduino
+                            .write_all(packet.as_slice())
+                            .expect("Failed to send packet");
+                    }
+                    None => continue,
+                },
+                None => {
+                    println!("Unknown command: {}", cmd);
+                    print_help(&commands);
+                }
             },
-            x if x.len() != 6 => {
-                error!("Must enter value six characters long (got {})", x.len());
-            }
-            x => {
-                num_pixels += 1;
-                buffer.extend_from_slice(decode_hex(x).unwrap().as_slice());
-                info!("Curr ({}): {:02x?}", num_pixels, buffer);
-            }
         }
     }
+}
+
+fn print_help<T: Instruction>(commands: &HashMap<String, Box<dyn InstructionBuilder<T>>>) {
+    commands
+        .iter()
+        .for_each(|(command, builder)| println!("{} - {}", command, builder.help()));
+    println!("read - read all buffered output from serial device");
+    println!("help - print this help message");
+    println!("exit - exit the program");
 }

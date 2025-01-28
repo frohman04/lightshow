@@ -3,7 +3,7 @@
 mod instruction;
 mod instructions;
 
-use crate::instruction::Instruction;
+pub use crate::instruction::Instruction;
 pub use crate::instructions::set_leds::SetLeds;
 use tracing::info;
 
