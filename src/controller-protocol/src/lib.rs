@@ -1,10 +1,10 @@
 #![forbid(unsafe_code)]
 
 mod instruction;
-mod set_leds;
+mod instructions;
 
 use crate::instruction::Instruction;
-pub use crate::set_leds::SetLeds;
+pub use crate::instructions::set_leds::SetLeds;
 use tracing::info;
 
 /// Build a COBS-encoded packet for a chunk of data.

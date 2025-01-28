@@ -1,7 +1,7 @@
+mod util;
+
+use crate::util::{decode_hex, input};
 use ls_controller_protocol::{build_packet, SetLeds};
-use std::io;
-use std::io::{BufRead, Read, Write};
-use std::num::ParseIntError;
 use std::time::Duration;
 use tracing::{error, info, warn, Level};
 use tracing_subscriber::FmtSubscriber;
@@ -85,24 +85,4 @@ fn cmd_loop(port: &str, baud_rate: u32) {
             }
         }
     }
-}
-
-/// Prompt a user for input and return the text that they typed.
-fn input(prompt: &str) -> io::Result<String> {
-    print!("{}", prompt);
-    io::stdout().flush()?;
-    io::stdin()
-        .lock()
-        .lines()
-        .next()
-        .unwrap()
-        .map(|line| line.trim().to_owned())
-}
-
-/// Take a textual representation of hexadecimal values and convert it to a series of bytes.
-fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
-    (0..s.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
-        .collect()
 }

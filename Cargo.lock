@@ -340,8 +340,6 @@ dependencies = [
 name = "controller-test-bench"
 version = "0.1.0"
 dependencies = [
- "cobs2",
- "crc",
  "ls-controller-protocol",
  "nu-ansi-term 0.47.0",
  "serialport",

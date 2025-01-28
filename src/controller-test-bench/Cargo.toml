@@ -5,8 +5,6 @@ edition = "2021"
 resolver = "2"
 
 [dependencies]
-cobs2 = "~0.1.4"
-crc = "~3.2.1"
 ls-controller-protocol = { path = "../controller-protocol" }
 nu-ansi-term = "~0.47.0"
 serialport = "~4.7.0"

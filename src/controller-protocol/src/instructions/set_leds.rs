@@ -17,9 +17,13 @@ impl<'a> SetLeds<'a> {
 }
 
 impl Instruction for SetLeds<'_> {
+    fn code() -> u8 {
+        1u8
+    }
+
     fn to_message(self) -> Vec<u8> {
         let mut mess: Vec<u8> = Vec::new();
-        mess.push(1u8);
+        mess.push(SetLeds::code());
         mess.push(self.offset);
         mess.push(self.num_pixels);
         mess.extend_from_slice(self.pixel_colors);
