@@ -16,7 +16,7 @@ fn main() {
     let ansi_enabled = fix_ansi_term();
 
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::INFO)
+        .with_max_level(Level::DEBUG)
         .with_ansi(ansi_enabled)
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");

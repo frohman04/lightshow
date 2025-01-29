@@ -6,14 +6,14 @@ mod instructions;
 pub use crate::instruction::Instruction;
 pub use crate::instructions::init::Init;
 pub use crate::instructions::set_leds::SetLeds;
-use tracing::info;
+use tracing::debug;
 
 /// Build a COBS-encoded packet for a chunk of data.
 pub fn build_packet(instruction: Box<dyn Instruction>) -> Vec<u8> {
-    info!("Building message for Arduino");
+    debug!("Building message for Arduino");
 
     let message = instruction.to_message();
-    info!("Constructed message: {:02x?}", message);
+    debug!("Constructed message: {:02x?}", message);
 
     let checksum = {
         let calc = crc::Crc::<u16>::new(&crc::CRC_16_ARC);
@@ -21,7 +21,7 @@ pub fn build_packet(instruction: Box<dyn Instruction>) -> Vec<u8> {
         digest.update(message.as_slice());
         digest.finalize()
     };
-    info!("Computed CRC16:      {} / {:x}", checksum, checksum);
+    debug!("Computed CRC16:      {} / {:x}", checksum, checksum);
 
     let packet = {
         let mut p: Vec<u8> = Vec::new();
@@ -29,14 +29,14 @@ pub fn build_packet(instruction: Box<dyn Instruction>) -> Vec<u8> {
         p.extend_from_slice(&checksum.to_be_bytes());
         p
     };
-    info!("Constructed packet:  {:02x?}", packet);
+    debug!("Constructed packet:  {:02x?}", packet);
 
     let encoded_packet = {
         let mut p = cobs2::cobs::encode_vector(packet.as_slice()).unwrap();
         p.push(0);
         p
     };
-    info!("Encoded packet:      {:02x?}", encoded_packet);
+    debug!("Encoded packet:      {:02x?}", encoded_packet);
 
     encoded_packet
 }
