@@ -8,6 +8,7 @@ use crate::instruction_builder::{InstructionBuilder, InstructionBuilderMeta};
 use crate::util::input;
 use ls_controller_protocol::build_packet;
 use std::collections::HashMap;
+use std::thread::sleep;
 use std::time::Duration;
 use tracing::{error, info, warn, Level};
 use tracing_subscriber::FmtSubscriber;
@@ -51,27 +52,13 @@ fn cmd_loop(port: &str, baud_rate: u32) {
         map
     };
 
+    read_serial(&mut arduino);
     while let Ok(cmd) = input("(exit, help)> ") {
         match cmd.as_str() {
             "exit" => break,
             "help" => print_help(&commands),
-            "read" => match arduino.bytes_to_read() {
-                Ok(bytes_available) if bytes_available > 0 => {
-                    let mut input_buffer = vec![0u8; bytes_available as usize];
-                    match arduino.read_exact(&mut input_buffer) {
-                        Ok(_) => {
-                            input_buffer
-                                .split(|char| *char == b'\n')
-                                .filter(|line| !line.is_empty())
-                                .for_each(|line| info!("recv> {}", String::from_utf8_lossy(line)));
-                        }
-                        Err(e) => error!("Error while reading data: {}", e),
-                    }
-                }
-                Ok(_) => warn!("recv empty"),
-                Err(e) => error!("Error while reading data: {}", e),
-            },
-            _ => {
+            "read" => read_serial(&mut arduino),
+            c if !c.is_empty() => {
                 let parts = cmd
                     .split_whitespace()
                     .map(|s| s.to_string())
@@ -84,10 +71,12 @@ fn cmd_loop(port: &str, baud_rate: u32) {
                         Some(instruction) => {
                             let packet = build_packet(instruction);
 
-                            info!("Sending packet: {:02x?}", packet);
+                            info!("send << {:02x?}", packet);
                             arduino
                                 .write_all(packet.as_slice())
                                 .expect("Failed to send packet");
+
+                            read_serial(&mut arduino);
                         }
                         None => continue,
                     },
@@ -97,7 +86,28 @@ fn cmd_loop(port: &str, baud_rate: u32) {
                     }
                 }
             }
+            _ => continue,
         }
+    }
+}
+
+fn read_serial(arduino: &mut Box<dyn serialport::SerialPort>) {
+    sleep(Duration::from_millis(100));
+    match arduino.bytes_to_read() {
+        Ok(bytes_available) if bytes_available > 0 => {
+            let mut input_buffer = vec![0u8; bytes_available as usize];
+            match arduino.read_exact(&mut input_buffer) {
+                Ok(_) => {
+                    input_buffer
+                        .split(|char| *char == b'\n')
+                        .filter(|line| !line.is_empty())
+                        .for_each(|line| info!("recv >> {}", String::from_utf8_lossy(line)));
+                }
+                Err(e) => error!("Error while reading data: {}", e),
+            }
+        }
+        Ok(_) => warn!("recv empty"),
+        Err(e) => error!("Error while reading data: {}", e),
     }
 }
 
