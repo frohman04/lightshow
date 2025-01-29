@@ -1,11 +1,7 @@
 use crate::instruction_builder::{InstructionBuilder, InstructionBuilderMeta};
 use crate::util::{decode_hex, input};
-use ls_controller_protocol::SetLeds;
+use ls_controller_protocol::{Instruction, SetLeds};
 use tracing::{error, info};
-
-pub struct SetLedsBuilderArgs {
-    offset: u8,
-}
 
 pub struct SetLedsBuilder {}
 
@@ -21,12 +17,12 @@ impl InstructionBuilderMeta for SetLedsBuilder {
     }
 }
 
-impl InstructionBuilder<SetLeds, SetLedsBuilderArgs> for SetLedsBuilder {
+impl InstructionBuilder for SetLedsBuilder {
     fn help(&self) -> String {
         "[offset] - set the colors for a set of LEDs".to_string()
     }
 
-    fn parse_args(&self, args: Vec<String>) -> Option<SetLedsBuilderArgs> {
+    fn build_instruction(&self, args: Vec<String>) -> Option<Box<dyn Instruction>> {
         if args.is_empty() {
             error!(
                 "Must specify offset as argument to {}",
@@ -41,10 +37,7 @@ impl InstructionBuilder<SetLeds, SetLedsBuilderArgs> for SetLedsBuilder {
                 return None;
             }
         };
-        Some(SetLedsBuilderArgs { offset })
-    }
 
-    fn build_instruction(&self, args: SetLedsBuilderArgs) -> Option<SetLeds> {
         let display_name = Self::display_name();
 
         let mut num_pixels: u8 = 0;
@@ -53,7 +46,7 @@ impl InstructionBuilder<SetLeds, SetLedsBuilderArgs> for SetLedsBuilder {
             format!(
                 "{}: led{} (done, exit, help)> ",
                 display_name,
-                args.offset + num_pixels
+                offset + num_pixels
             )
             .as_str(),
         ) {
@@ -70,7 +63,7 @@ impl InstructionBuilder<SetLeds, SetLedsBuilderArgs> for SetLedsBuilder {
                 "peek" => {
                     info!(
                         "(offset: {}, num_pixels: {}): {:02x?}",
-                        args.offset, num_pixels, buffer
+                        offset, num_pixels, buffer
                     );
                 }
                 v => match decode_hex(v) {
@@ -87,6 +80,6 @@ impl InstructionBuilder<SetLeds, SetLedsBuilderArgs> for SetLedsBuilder {
             }
         }
 
-        Some(SetLeds::new(args.offset, num_pixels, buffer))
+        Some(Box::new(SetLeds::new(offset, num_pixels, buffer)))
     }
 }

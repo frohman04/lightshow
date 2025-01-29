@@ -5,13 +5,10 @@ pub(crate) trait InstructionBuilderMeta {
     fn display_name() -> String;
 }
 
-pub(crate) trait InstructionBuilder<T: Instruction, A> {
+pub(crate) trait InstructionBuilder {
     /// Provide a brief description of the builder.
     fn help(&self) -> String;
 
-    /// Parse the arguments for an instruction builder from the original command invocation.
-    fn parse_args(&self, args: Vec<String>) -> Option<A>;
-
     /// Build an instruction interactively using stdin.
-    fn build_instruction(&self, args: A) -> Option<T>;
+    fn build_instruction(&self, args: Vec<String>) -> Option<Box<dyn Instruction>>;
 }

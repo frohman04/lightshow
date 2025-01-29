@@ -39,6 +39,20 @@ The CRC is written into the message in Big Endian order.
 Each instruction is transmitted as a byte defining the instruction followed by
 the data specific to that instruction.
 
+### Init
+
+This instruction is used to initialize the LED strip controller and is denoted
+by the instruction code `0x00`.  This instruction must be sent prior to issuing
+any other instructions to the controller.
+
+| **Byte**     | 0    | 1          | 2   | 3   | 4   |
+|--------------|------|------------|-----|-----|-----|
+| **Contents** | 0x00 | num_pixels | pin | CRC | CRC |
+
+After the instruction code, the number of pixels in the strip is provided using
+an unsigned 8-bit integer.  The pin the LED strip's data in line is attached to
+is specified in the next spot as an unsigned integer.
+
 ### SetLeds
 
 This instruction is used to set the colors for one or more LEDs in the

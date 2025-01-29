@@ -4,11 +4,12 @@ mod instruction;
 mod instructions;
 
 pub use crate::instruction::Instruction;
+pub use crate::instructions::init::Init;
 pub use crate::instructions::set_leds::SetLeds;
 use tracing::info;
 
 /// Build a COBS-encoded packet for a chunk of data.
-pub fn build_packet<T: Instruction>(instruction: T) -> Vec<u8> {
+pub fn build_packet(instruction: Box<dyn Instruction>) -> Vec<u8> {
     info!("Building message for Arduino");
 
     let message = instruction.to_message();

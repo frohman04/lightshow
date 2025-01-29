@@ -5,15 +5,16 @@
   #include <avr/power.h>
 #endif
 
-#define PIN         2
-#define NUMPIXELS 118
+// #define PIN         2
+// #define NUMPIXELS 118
 #define MSGSIZE     3
 #define DEBUG
 
+#define INST_INIT     0
 #define INST_SET_LEDS 1
 
-Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
-#define DELAYVAL 50
+Adafruit_NeoPixel pixels;
+bool isInitialized = false;
 
 PacketSerial myPacketSerial;
 
@@ -23,7 +24,6 @@ void setup() {
 #endif
   myPacketSerial.begin(115200);
   myPacketSerial.setPacketHandler(&onPacketReceived);
-  pixels.begin();
   Serial.println("Startup complete");
 #ifdef DEBUG
   Serial.println("Debug mode activated");
@@ -86,7 +86,7 @@ bool isCrcValid(const uint8_t* buffer, size_t size) {
 
 void onPacketReceived(const uint8_t* buffer, size_t size) {
 #ifdef DEBUG
-  Serial.print("Received packet (size ");
+  Serial.print("DEBUG: Received packet (size ");
   Serial.print(size);
   Serial.print("): ");
   for (int i = 0; i < size; i++) {
@@ -98,9 +98,68 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
   if (isCrcValid(buffer, size)) {
     uint8_t instruction = buffer[0];
 
-    if (instruction == INST_SET_LEDS) {
+    if (instruction != INST_INIT && !isInitialized) {
+      // must initialize the LED strip before any other instructions can be executed
+#ifdef DEBUG
+      Serial.print("ERROR: Must send Init instruction before executing ");
+      Serial.print(String(instruction, HEX));
+      Serial.print("\n");
+#endif
+      return;
+    }
+
+    if (instruction == INST_INIT) {
+      if (size != 5) {
+        // invalid size for init instruction
+#ifdef DEBUG
+        Serial.print("ERROR: Invalid message size for Init message (expected 5, got ");
+        Serial.print(size);
+        Serial.print(")\n");
+#endif
+        return;
+      }
+
+      uint8_t numPixels = buffer[1];
+      uint8_t pin = buffer[2];
+
+#ifdef DEBUG
+        Serial.print("DEBUG: Initializing ");
+        Serial.print(numPixels);
+        Serial.print(" pixels attached to pin ");
+        Serial.print(pin);
+        Serial.print("\n");
+#endif
+
+      pixels = new Adafruit_NeoPixel(numPixels, pin, NEO_GRB + NEO_KHZ800);
+      pixels.begin();
+
+      isInitialized = true;
+    } else if (instruction == INST_SET_LEDS) {
+      if (size < 5) {
+        // invalid size for SetLeds instruction
+#ifdef DEBUG
+        Serial.print("ERROR: Invalid message size for SetLeds message (requires at least 5, got ");
+        Serial.print(size);
+        Serial.print(")\n");
+#endif
+        return;
+      }
+
       uint8_t pixelOffset = buffer[1];
       uint8_t numPixels = buffer[2];
+
+      uint8_t expectedSize = 5 + numPixels * MSGSIZE;
+      if (size != expectedSize) {
+        // invalid size for SetLeds instruction
+#ifdef DEBUG
+        Serial.print("ERROR: Invalid message size for SetLeds message (expected ");
+        Serial.print(expectedSize);
+        Serial.print(", got ");
+        Serial.print(size);
+        Serial.print(")\n");
+#endif
+        return;
+      }
 
       for (int pixelI = 0; pixelI < numPixels; pixelI++) {
         size_t baseAddr = pixelDataStartI + MSGSIZE * pixelI;
@@ -130,9 +189,9 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
     } else {
       // unknown instruction, discard packet
 #ifdef DEBUG
-    Serial.print("ERROR: Received packet with unknown instruction, discarding (go ");
-    Serial.print(String(instruction, HEX));
-    Serial.print(")\n");
+      Serial.print("ERROR: Received packet with unknown instruction, discarding (go ");
+      Serial.print(String(instruction, HEX));
+      Serial.print(")\n");
 #endif
     }
   }
