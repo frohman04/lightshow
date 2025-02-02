@@ -7,6 +7,7 @@
 
 // #define PIN         2
 // #define NUMPIXELS 118
+#define RCV_LED    13
 #define MSGSIZE     3
 #define DEBUG
 
@@ -24,6 +25,7 @@ void setup() {
 #endif
   myPacketSerial.begin(115200);
   myPacketSerial.setPacketHandler(&onPacketReceived);
+  pinMode(RCV_LED, OUTPUT);
   Serial.println("Startup complete");
 #ifdef DEBUG
   Serial.println("Debug mode activated");
@@ -85,6 +87,8 @@ bool isCrcValid(const uint8_t* buffer, size_t size) {
 }
 
 void onPacketReceived(const uint8_t* buffer, size_t size) {
+  digitalWrite(RCV_LED, HIGH);
+
 #ifdef DEBUG
   Serial.print("DEBUG: Received packet (size ");
   Serial.print(size);
@@ -202,4 +206,6 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
 #endif
     }
   }
+
+  digitalWrite(RCV_LED, LOW);
 }
