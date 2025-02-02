@@ -160,6 +160,13 @@ void onPacketReceived(const uint8_t* buffer, size_t size) {
 #endif
         return;
       }
+      if (!isInitialized) {
+        // never initialized the LED strip
+#ifdef DEBUG
+        Serial.println("ERROR: Attempted to SetLeds without first sending Init!");
+#endif
+        return;
+      }
 
       for (int pixelI = 0; pixelI < numPixels; pixelI++) {
         size_t baseAddr = pixelDataStartI + MSGSIZE * pixelI;
