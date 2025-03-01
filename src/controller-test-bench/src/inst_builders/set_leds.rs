@@ -53,7 +53,9 @@ impl InstructionBuilder for SetLedsBuilder {
             match inp.as_str() {
                 "exit" => return None,
                 "help" => {
-                    println!("rrggbb - provide the HTML hex colorcode for the next pixel to add to the buffer");
+                    println!(
+                        "rrggbb - provide the HTML hex colorcode for the next pixel to add to the buffer"
+                    );
                     println!("peek - peek at the current buffer contents");
                     println!("done - send a message with the current buffer contents");
                     println!("help - show this help message");

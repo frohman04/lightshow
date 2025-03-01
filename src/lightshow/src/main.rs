@@ -6,7 +6,7 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 use time::OffsetDateTime;
-use tracing::{info, info_span, Level};
+use tracing::{Level, info, info_span};
 use tracing_subscriber::FmtSubscriber;
 
 fn main() {

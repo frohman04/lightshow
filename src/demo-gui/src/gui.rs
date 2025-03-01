@@ -1,6 +1,6 @@
 use egui::{ClippedPrimitive, Context, TexturesDelta};
 use egui_wgpu::renderer::{Renderer, ScreenDescriptor};
-use pixels::{wgpu, PixelsContext};
+use pixels::{PixelsContext, wgpu};
 use std::cell::RefCell;
 use std::rc::Rc;
 use winit::event_loop::EventLoopWindowTarget;

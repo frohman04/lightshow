@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use dxgcap::{DXGIManager, BGRA8};
+use dxgcap::{BGRA8, DXGIManager};
 
 pub struct Screenshot {
     pub pixels: Vec<BGRA8>,
@@ -34,6 +34,6 @@ impl Screenshotter {
             .manager
             .capture_frame()
             .map_err(|err| anyhow::Error::msg(format!("{err:?}")))?;
-        Ok(Screenshot::new(ss.0, ss.1 .0, ss.1 .1))
+        Ok(Screenshot::new(ss.0, ss.1.0, ss.1.1))
     }
 }

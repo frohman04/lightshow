@@ -10,7 +10,7 @@ use ls_controller_protocol::build_packet;
 use std::collections::HashMap;
 use std::thread::sleep;
 use std::time::Duration;
-use tracing::{error, info, warn, Level};
+use tracing::{Level, error, info, warn};
 use tracing_subscriber::FmtSubscriber;
 
 fn main() {

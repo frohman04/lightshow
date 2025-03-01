@@ -9,7 +9,7 @@ use pixels::{Error, Pixels, SurfaceTexture};
 use std::cell::RefCell;
 use std::rc::Rc;
 use time::OffsetDateTime;
-use tracing::{error, info, info_span, Level};
+use tracing::{Level, error, info, info_span};
 use tracing_subscriber::FmtSubscriber;
 use winit::dpi::LogicalSize;
 use winit::event::{Event, VirtualKeyCode};
