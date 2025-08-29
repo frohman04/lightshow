@@ -9,4 +9,4 @@ ls-controller-protocol = { path = "../controller-protocol" }
 nu-ansi-term = "~0.47.0"
 serialport = "~4.7.0"
 tracing = "~0.1.36"
-tracing-subscriber = "~0.3.15"
+tracing-subscriber = "~0.3.20"
